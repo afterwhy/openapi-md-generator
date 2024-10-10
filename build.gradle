@@ -1,0 +1,23 @@
+plugins {
+    id 'java'
+}
+
+group = 'ru.afterwhy.openapimd'
+version = '0.1'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.yaml:snakeyaml:2.0'
+    implementation 'io.swagger.parser.v3:swagger-parser:2.0.31'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
