@@ -9,9 +9,15 @@ repositories {
     mavenCentral()
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(23)
+    }
+}
+
 dependencies {
     implementation 'org.yaml:snakeyaml:2.0'
-    implementation 'io.swagger.parser.v3:swagger-parser:2.0.31'
+    implementation 'io.swagger.parser.v3:swagger-parser:2.1.23'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
 
     testImplementation platform('org.junit:junit-bom:5.10.0')
