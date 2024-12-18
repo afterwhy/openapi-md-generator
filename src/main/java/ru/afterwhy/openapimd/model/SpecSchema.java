@@ -5,7 +5,7 @@ import java.util.List;
 public record SpecSchema(
         String name,
         String description,
-        List<SpecSchemaParameter> parameters,
+        List<SpecSchemaProperty> properties,
         Object example,
         SpecSchema itemSpec) {
 }

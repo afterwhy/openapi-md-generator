@@ -4,7 +4,7 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.media.ComposedSchema;
 import io.swagger.v3.oas.models.media.Schema;
 import ru.afterwhy.openapimd.model.SpecSchema;
-import ru.afterwhy.openapimd.model.SpecSchemaParameter;
+import ru.afterwhy.openapimd.model.SpecSchemaProperty;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,7 +61,7 @@ public class SchemasParser {
         return specSchema;
     }
 
-    private List<SpecSchemaParameter> getParameters(Schema<?> schema, SchemaGetter storage, Locale locale) {
+    private List<SpecSchemaProperty> getParameters(Schema<?> schema, SchemaGetter storage, Locale locale) {
         return getProperties(schema, storage).entrySet()
                 .stream()
                 .map(e -> {
@@ -69,13 +69,13 @@ public class SchemasParser {
                     Schema<?> parameterSchema = storage.getFullSchema(e.getValue());
                     var parameterSpecSchema = parseSchema(parameterSchema, storage, locale);
                     var required = schema.getRequired() != null ? schema.getRequired() : List.of();
-                    return new SpecSchemaParameter(
+                    return new SpecSchemaProperty(
                             parameterSpecSchema,
                             paramName,
                             parameterSchema.getType(),
                             parameterSchema.getFormat(),
                             parameterSchema.getDescription(),
-                            ExampleGenerator.getExample(parameterSchema, parameterSpecSchema.itemSpec(), parameterSpecSchema.parameters(), storage, locale),
+                            ExampleGenerator.getExample(parameterSchema, parameterSpecSchema.itemSpec(), parameterSpecSchema.properties(), storage, locale),
                             required.contains(paramName)
                     );
                 }).toList();

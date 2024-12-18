@@ -2,7 +2,7 @@ package ru.afterwhy.openapimd;
 
 import io.swagger.v3.oas.models.media.*;
 import ru.afterwhy.openapimd.model.SpecSchema;
-import ru.afterwhy.openapimd.model.SpecSchemaParameter;
+import ru.afterwhy.openapimd.model.SpecSchemaProperty;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 public class ExampleGenerator {
     private static final Random random = new Random();
 
-    public static Object getExample(Schema<?> schema, SpecSchema itemSpec, List<SpecSchemaParameter> parameters, SchemaGetter storage, Locale locale) {
+    public static Object getExample(Schema<?> schema, SpecSchema itemSpec, List<SpecSchemaProperty> parameters, SchemaGetter storage, Locale locale) {
         var resourceBundle = ResourceBundle.getBundle("locale", locale);
 
         if (schema.getExample() != null) {
