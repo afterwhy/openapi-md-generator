@@ -9,6 +9,6 @@ public record SpecApiEndpoint(String operationId,
                               String description,
                               List<String> tag,
                               List<EndpointParameter> parameters,
-                              RequestBody requestBody,
-                              List<RequestBody> requestBodies) {
+                              ExchangeContent request,
+                              ResponseDescriptor responses) {
 }

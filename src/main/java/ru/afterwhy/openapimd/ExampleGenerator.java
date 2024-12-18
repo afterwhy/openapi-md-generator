@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 public class ExampleGenerator {
     private static final Random random = new Random();
 
-    public static Object getExample(Schema<?> schema, SpecSchema itemSpec, List<SpecSchemaParameter> parameters, SchemaStorage storage, Locale locale) {
+    public static Object getExample(Schema<?> schema, SpecSchema itemSpec, List<SpecSchemaParameter> parameters, SchemaGetter storage, Locale locale) {
         var resourceBundle = ResourceBundle.getBundle("locale", locale);
 
         if (schema.getExample() != null) {

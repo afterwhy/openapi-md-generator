@@ -16,11 +16,16 @@ public class SchemasParser {
 
     private final Map<String, SpecSchema> alreadyCreatedSchemas = new LinkedHashMap<>();
 
-    List<SpecSchema> getSchemas(OpenAPI openAPI, Locale locale) {
+    public SpecSchema parseSchema(SchemaStorage schemaStorage, Schema schema, Locale locale) {
+        return parseSchema(schemaStorage.getFullSchema(schema), schemaStorage, locale);
+    }
+
+    public SchemaStorage getSchemas(OpenAPI openAPI, Locale locale) {
         var allSchemas = getAllSchemas(openAPI);
-        return allSchemas.values().stream()
+        var specSchemas = allSchemas.values().stream()
                 .map(s -> parseSchema(getSchema(s, allSchemas), scm -> getSchema(scm, allSchemas), locale))
-                .toList();
+                .collect(Collectors.toMap(SpecSchema::name, s -> s));
+        return new SchemaStorage(allSchemas, specSchemas);
     }
 
     private static Schema getSchema(Schema<?> scm, Map<String, Schema> allSchemas) {
@@ -30,7 +35,7 @@ public class SchemasParser {
         return resolveSchema(allSchemas, scm);
     }
 
-    private SpecSchema parseSchema(Schema<?> schema, SchemaStorage storage, Locale locale) {
+    private SpecSchema parseSchema(Schema<?> schema, SchemaGetter storage, Locale locale) {
         var schemaName = schema.getName();
         if (schemaName != null) {
             if (alreadyCreatedSchemas.containsKey(schemaName)) {
@@ -56,7 +61,7 @@ public class SchemasParser {
         return specSchema;
     }
 
-    private List<SpecSchemaParameter> getParameters(Schema<?> schema, SchemaStorage storage, Locale locale) {
+    private List<SpecSchemaParameter> getParameters(Schema<?> schema, SchemaGetter storage, Locale locale) {
         return getProperties(schema, storage).entrySet()
                 .stream()
                 .map(e -> {
@@ -76,7 +81,7 @@ public class SchemasParser {
                 }).toList();
     }
 
-    private static Map<String, Schema> getProperties(Schema<?> schema, SchemaStorage storage) {
+    private static Map<String, Schema> getProperties(Schema<?> schema, SchemaGetter storage) {
         Map<String, Schema> properties = new LinkedHashMap<>();
 
         if (schema instanceof ComposedSchema composedSchema) {
@@ -123,5 +128,4 @@ public class SchemasParser {
                 .map(e -> Map.entry(e.getKey(), resolveSchema(allSchemas, e.getValue())))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
-
 }
