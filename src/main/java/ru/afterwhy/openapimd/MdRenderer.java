@@ -1,33 +1,38 @@
 package ru.afterwhy.openapimd;
 
-import ru.afterwhy.openapimd.model.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import ru.afterwhy.openapimd.model.EndpointParameter;
+import ru.afterwhy.openapimd.model.SpecSchema;
+import ru.afterwhy.openapimd.model.SpecSchemaProperty;
+import ru.afterwhy.openapimd.model.Specification;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.ResourceBundle;
+import java.util.*;
 
 public class MdRenderer {
 
     private final ResourceBundle resourceBundle;
+    private final ObjectMapper objectMapper;
 
-    public MdRenderer(Locale locale) {
+    public MdRenderer(ObjectMapper objectMapper, Locale locale) {
+        this.objectMapper = objectMapper;
         this.resourceBundle = ResourceBundle.getBundle("locale", locale);
     }
 
     public String render(Specification spec) {
-        try(var os = new ByteArrayOutputStream(); var writer = new OutputStreamWriter(os)) {
+        try (var os = new ByteArrayOutputStream(); var writer = new OutputStreamWriter(os)) {
             render(spec, writer);
             return os.toString(StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
     }
+
     public void render(Specification spec, OutputStreamWriter writer) throws IOException {
         // Заголовок первого уровня (title из info)
         writer.write("# " + spec.title() + "\n\n");
@@ -41,10 +46,10 @@ public class MdRenderer {
         writer.write("## API\n\n");
 
         // Группировка эндпойнтов по тэгам
-        for (SpecTag tag : spec.tags()) {
+        for (var tag : spec.tags()) {
             writer.write("- [" + tag.name() + "](#" + stringToLink(tag.name()) + ")\n");
-            for (SpecOperation operation : tag.operations()) {
-                String summary = spec.getEndpoint(operation.httpMethod(), operation.path()).getSummaryEvenIfNotExists();
+            for (var operation : tag.operations()) {
+                var summary = spec.getEndpoint(operation.httpMethod(), operation.path()).getSummaryEvenIfNotExists();
                 writer.write("  - [" + summary + "](#" + stringToLink(summary) + ")\n");
             }
         }
@@ -52,13 +57,13 @@ public class MdRenderer {
         writer.write("\n");
 
         // Описание тэгов и эндпойнтов
-        for (SpecTag tag : spec.tags()) {
+        for (var tag : spec.tags()) {
             writer.write("### " + tag.name() + "\n\n");
 
-            for (SpecOperation operation : tag.operations()) {
-                String path = operation.path();
+            for (var operation : tag.operations()) {
+                var path = operation.path();
                 var endpoint = spec.getEndpoint(operation.httpMethod(), operation.path());
-                String summary = endpoint.getSummaryEvenIfNotExists();
+                var summary = endpoint.getSummaryEvenIfNotExists();
 
                 // Заголовок 4 уровня с использованием summary
                 writer.write("#### " + summary + "\n\n");
@@ -74,43 +79,74 @@ public class MdRenderer {
 
                 // Параметры запроса
                 if (endpoint.parameters() != null && !endpoint.parameters().isEmpty()) {
-                    writer.write("##### %s\n\n".formatted(resourceBundle.getString("schema-properties.request.header")));
+                    writer.write("##### %s\n\n".formatted(resourceBundle.getString("endpoint.request.schema-properties.header")));
                     var typeHeader = resourceBundle.getString("schema-parameters.table-header.type");
                     var nameHeader = resourceBundle.getString("schema-parameters.table-header.name");
                     var descriptionHeader = resourceBundle.getString("schema-parameters.table-header.description");
                     var requiredHeader = resourceBundle.getString("schema-parameters.table-header.required");
                     writer.write("| %s | %s | %s | %s |\n".formatted(typeHeader, nameHeader, descriptionHeader, requiredHeader));
                     writer.write("|----|----|----|----|\n");
-                    for (EndpointParameter parameter : endpoint.parameters()) {
-                        String type = getEndpointParameterTypeLocalized(parameter);
+                    for (var parameter : endpoint.parameters()) {
+                        var type = getEndpointParameterTypeLocalized(parameter);
                         var name = parameter.name();
                         var description = parameter.description() != null ? parameter.description() : "";
-                        String required = parameter.required() ? "+" : "-";
+                        var required = parameter.required() ? "+" : "-";
                         writer.write("| " + type + " | " + name + " | " + description + " | " + required + " |\n");
                     }
                     writer.write("\n");
                 }
 
                 if (endpoint.request() != null) {
-                    writer.write("### %s\n".formatted(resourceBundle.getString("schema-properties.request")));
-                    for (Map.Entry<String, SpecSchema> requestVariant : endpoint.request().content().entrySet()) {
-                        writer.write("#### %s\n".formatted(requestVariant.getKey()));
+                    writer.write("### %s\n".formatted(resourceBundle.getString("endpoint.request")));
+                    for (var requestVariant : endpoint.request().content().entrySet()) {
+                        var mimeType = requestVariant.getKey();
+                        writer.write("##### %s\n".formatted(mimeType));
                         writer.write(generateMarkdownTableForProperties(requestVariant.getValue().properties()));
+                        writer.write("##### %s\n".formatted(resourceBundle.getString("endpoint.request.example")));
+                        writer.write(generateExample(mimeType, requestVariant));
                     }
                 }
 
                 if (!endpoint.responses().responses().isEmpty()) {
-                    writer.write("### %s\n".formatted(resourceBundle.getString("schema-properties.response")));
-                    for (Map.Entry<Integer, ExchangeContent> responsesByHttpCode : endpoint.responses().responses().entrySet()) {
+                    writer.write("### %s\n".formatted(resourceBundle.getString("endpoint.response")));
+                    for (var responsesByHttpCode : endpoint.responses().responses().entrySet()) {
                         writer.write("#### %s\n".formatted(responsesByHttpCode.getKey()));
-                        for (Map.Entry<String, SpecSchema> requestVariant : responsesByHttpCode.getValue().content().entrySet()) {
-                            writer.write("##### %s\n".formatted(requestVariant.getKey()));
-                            writer.write(generateMarkdownTableForProperties(requestVariant.getValue().properties()));
+                        for (var responseVariant : responsesByHttpCode.getValue().content().entrySet()) {
+                            var mimeType = responseVariant.getKey();
+                            writer.write("##### %s\n".formatted(mimeType));
+                            writer.write(generateMarkdownTableForProperties(responseVariant.getValue().properties()));
+                            writer.write("##### %s\n".formatted(resourceBundle.getString("endpoint.response.example")));
+                            writer.write(generateExample(mimeType, responseVariant));
                         }
                     }
                 }
             }
         }
+    }
+
+    private String generateExample(String mimeType, Map.Entry<String, SpecSchema> responseVariant) {
+        var codeType = switch (mimeType) {
+            case "application/json" -> "json";
+            default -> throw new UnsupportedOperationException("Unsupported mime type: " + mimeType);
+        };
+
+        return """
+                ```%s
+                %s
+                ```
+                """.formatted(codeType, getFormattedExample(mimeType, responseVariant.getValue().example()));
+    }
+
+    private String getFormattedExample(String mimeType, Object example) {
+        if (Objects.equals(mimeType, "application/json")) {
+            try {
+                return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(example);
+            } catch (JsonProcessingException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
+        throw new UnsupportedOperationException("Unsupported mime type: " + mimeType);
     }
 
     private String getEndpointParameterTypeLocalized(EndpointParameter parameter) {
@@ -124,7 +160,7 @@ public class MdRenderer {
     }
 
     private String generateMarkdownTableForProperties(List<SpecSchemaProperty> properties) {
-        StringBuilder tableBuilder = new StringBuilder();
+        var tableBuilder = new StringBuilder();
         var typeHeader = resourceBundle.getString("schema-properties.table-header.type");
         var nameHeader = resourceBundle.getString("schema-properties.table-header.name");
         var descriptionHeader = resourceBundle.getString("schema-properties.table-header.description");
@@ -133,12 +169,12 @@ public class MdRenderer {
         tableBuilder.append("|-----|----------|----------|--------------|\n");
 
         for (var parameter : properties) {
-            String propertyName = parameter.name();
+            var propertyName = parameter.name();
             var propertySchema = parameter.schema();
 
-            String type = getPropertyTypeName(parameter.type(), parameter.schema().itemSpec());
-            String description = propertySchema.description() != null ? propertySchema.description() : "—";
-            String required = parameter.required() ? "+" : "-";
+            var type = getPropertyTypeName(parameter.type(), parameter.schema().itemSpec());
+            var description = propertySchema.description() != null ? propertySchema.description() : "—";
+            var required = parameter.required() ? "+" : "-";
 
             // Добавляем строку в таблицу
             tableBuilder.append("| ")

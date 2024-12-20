@@ -1,7 +1,9 @@
 package ru.afterwhy.openapimd;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Locale;
 
 public class Main {
@@ -12,15 +14,19 @@ public class Main {
             return;
         }
 
-        String openApiFilePath = args[0];
+        var openApiFilePath = args[0];
         var locale = Locale.of("ru-RU");
-        var spec = new SpecParser().parse(openApiFilePath, locale);
 
-        var mdRenderer = new MdRenderer(locale);
-        try (FileWriter writer = new FileWriter("api-documentation-new.md")) {
+        var objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+
+        try (var writer = new FileWriter("api-documentation-new.md")) {
+            var spec = new SpecParser().parse(openApiFilePath, locale);
+            var mdRenderer = new MdRenderer(objectMapper, locale);
             mdRenderer.render(spec, writer);
-        } catch (IOException e) {
-            System.out.println("Error writing to markdown file: " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("Error building markdown file: " + e.getMessage());
+            throw new RuntimeException(e);
         }
 
     }
